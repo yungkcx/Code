@@ -1,5 +1,13 @@
 #include "code.h"
 
+bool bit8AND(bool a[])
+{
+    return AND(
+            AND(AND(a[0], a[1]), AND(a[2], a[3])),
+            AND(AND(a[4], a[5]), AND(a[6], a[7]))
+            );
+}
+
 bool HalfAdder(bool a, bool b, bool *carryOut)
 {
     *carryOut = AND(a, b);
@@ -16,7 +24,7 @@ bool FullAdder(bool a, bool b, bool carryIn, bool *carryOut)
 }
 
 /* Ripple carry. */
-void _8bitAdder(bool a[], bool b[], bool output[], bool carryIn, bool *carryOut)
+void bit8Adder(bool a[], bool b[], bool output[], bool carryIn, bool *carryOut)
 {
     for (int i = 8; i > 0; --i) {
         output[i - 1] = FullAdder(a[i - 1], b[i - 1], carryIn, carryOut);
@@ -30,11 +38,29 @@ void onesComplement(bool signal, bool a[])
         a[i] = XOR(signal, a[i]);
 }
 
-void _8bitAdderOrSubtractor(bool a[], bool b[], bool output[], bool sub, bool *carryOut)
+void bit8AdderOrSubtractor(bool a[], bool b[], bool output[], bool sub, bool *carryOut)
 {
     /* If a > b, carryOut is 0 and output is right, else carryOut
        is 1 and result is wrong. */
-    onesComplement(1, b);
-    _8bitAdder(a, b, output, 1, carryOut);
-    *carryOut = XOR(*carryOut, 1);
+    onesComplement(sub, b);
+    bit8Adder(a, b, output, sub, carryOut);
+    *carryOut = XOR(*carryOut, sub);
+}
+
+void bit8FlipLatchFunc(bit8FlipLatch *fl, bool dataIn[], bool output[], bool write)
+{
+    for (int i = 0; i < 8; ++i)
+        output[i] = DFlipLatchFunc(&fl->bits[i], dataIn[i], write);
+}
+
+bool selector2_1(bool a, bool b, bool select)
+{
+    /* If select == 0, then output a, else output b. */
+    return OR(AND(b, select), AND(a, !select));
+}
+
+void bit8Selector(bool a[], bool b[], bool output[], bool select)
+{
+    for (int i = 0; i < 8; ++i)
+        output[i] = selector2_1(a[i], b[i], select);
 }

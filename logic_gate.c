@@ -29,3 +29,12 @@ bool XOR(bool a, bool b)
 {
     return a ^ b;
 }
+
+bool DFlipLatchFunc(DFlipLatch *fl, bool d, bool clk)
+{
+    if (clk)
+        *fl = d;
+    else
+        ; /* Clk is 0, do nothing. */
+    return *fl;
+}

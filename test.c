@@ -41,7 +41,7 @@ static void test_logic_gate()
     TEST_BOOL_EQ(0, XOR(0, 0));
 }
 
-static void test_8bit_adder()
+static void testbit8_adder()
 {
     bool a[8] = { 1, 0, 0, 1, 1, 1, 0, 0 };
     bool b[8] = { 1, 1, 0, 1, 0, 1, 0, 1 };
@@ -49,13 +49,13 @@ static void test_8bit_adder()
     bool carryOut;
     bool output[8];
     bool expect[8] = { 0, 1, 1, 1, 0, 0, 0, 1 };
-    _8bitAdder(a, b, output, carryIn, &carryOut);
+    bit8AdderOrSubtractor(a, b, output, carryIn, &carryOut);
     for (int i = 0; i < 8; ++i)
         TEST_BOOL_EQ(expect[i], output[i]);
     TEST_BOOL_EQ(1, carryOut);
 }
 
-static void test_8bit_adder_or_subtractor()
+static void testbit8_adder_or_subtractor()
 {
     bool a[8] = { 1, 1, 1, 1, 1, 1, 0, 1 };
     bool b[8] = { 1, 0, 1, 1, 0, 0, 0, 0 };
@@ -63,7 +63,7 @@ static void test_8bit_adder_or_subtractor()
     bool carryIn = 0;
     bool carryOut;
     bool output[8];
-    _8bitAdderOrSubtractor(a, b, output, 1, &carryOut);
+    bit8AdderOrSubtractor(a, b, output, 1, &carryOut);
     for (int i = 0; i < 8; ++i)
         TEST_BOOL_EQ(expect[i], output[i]);
     TEST_BOOL_EQ(0, carryOut);
@@ -88,14 +88,45 @@ static void test_adder()
     TEST_BOOL_EQ(1, carryOut);
     TEST_BOOL_EQ(1, FullAdder(1, 1, 1, &carryOut));
     TEST_BOOL_EQ(1, carryOut);
-    test_8bit_adder();
-    test_8bit_adder_or_subtractor();
+    testbit8_adder();
+    testbit8_adder_or_subtractor();
+}
+
+static void test_flip_latch()
+{
+    bool a[8] = { 1, 0, 0, 1, 1, 1, 0, 1 };
+    bool b[8] = { 0, 0, 1, 1, 0, 0, 1, 1 };
+    bool output[8];
+    bit8FlipLatch fl;
+    bit8FlipLatchFunc(&fl, a, output, 1);
+    for (int i = 0; i < 8; ++i)
+        TEST_BOOL_EQ(a[i], output[i]);
+    bit8FlipLatchFunc(&fl, b, output, 0);
+    for (int i = 0; i < 8; ++i)
+        TEST_BOOL_EQ(a[i], output[i]);
+}
+
+void test_selector()
+{
+    bool a[8] = { 1, 0, 0, 1, 1, 1, 0, 1 };
+    bool b[8] = { 0, 0, 1, 1, 0, 0, 1, 1 };
+    bool output[8];
+    bool select = 0;
+    bit8Selector(a, b, output, select);
+    for (int i = 0; i < 8; ++i)
+        TEST_BOOL_EQ(a[i], output[i]);
+    select = 1;
+    bit8Selector(a, b, output, select);
+    for (int i = 0; i < 8; ++i)
+        TEST_BOOL_EQ(b[i], output[i]);
 }
 
 static void test()
 {
     test_logic_gate();
     test_adder();
+    test_flip_latch();
+    test_selector();
 }
 
 int main()
