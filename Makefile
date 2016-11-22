@@ -1,8 +1,10 @@
 CC=gcc
+CFLAGS=-Wall
+PROGRAM=computer
 
 all:
-	${CC} *.c -o computer
+	${CC} *.c -o ${PROGRAM} ${CFLAGS}
 
 .PHONY: clean
 clean:
-	rm computer
+	rm ${PROGRAM}

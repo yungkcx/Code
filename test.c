@@ -64,7 +64,6 @@ static void testbit8_adder_or_subtractor()
     bool a[8] = { 1, 1, 1, 1, 1, 1, 0, 1 };
     bool b[8] = { 1, 0, 1, 1, 0, 0, 0, 0 };
     bool expect[8] = { 0, 1, 0, 0, 1, 1, 0, 1 };
-    bool carryIn = 0;
     bool carryOut;
     bool output[8];
     bit8AdderOrSubtractor(a, b, output, 1, &carryOut);

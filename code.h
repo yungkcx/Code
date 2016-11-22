@@ -26,11 +26,14 @@ typedef struct {
     DFlipLatch bits[8];
 } bit8FlipLatch;
 
-bool DFlipLatchFunc(DFlipLatch *fl, bool d, bool w, bool clr);
-void bit8FlipLatchFunc(bit8FlipLatch *fl, bool dataIn[], bool output[], bool w, bool clr);
+bool DFlipLatchFunc(DFlipLatch *df, bool d, bool w, bool clr);
+void bit8FlipLatchFunc(bit8FlipLatch *df, bool dataIn[], bool output[], bool w, bool clr);
 void bit8Selector2_1(bool a[], bool b[], bool output[], bool select);
 bool selector8_1(bool d[], bool s[]);
 void dataDecoder3_8(bool d, bool s[], bool output[]);
 bool bit8RAM(DFlipLatch df[], bool addr[], bool d, bool w);
+void bit8RAM8(DFlipLatch df[], bool addr[], bool d[], bool output[], bool w);
+void bit8Decoder1_2(bool d[], bool output0[], bool output1[], bool select);
+void decoder1_2(bool d, bool *out0, bool *out1, bool select);
 
 #endif /* CODE_H__ */
