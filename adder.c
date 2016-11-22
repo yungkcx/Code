@@ -1,13 +1,5 @@
 #include "code.h"
 
-bool bit8AND(bool a[])
-{
-    return AND(
-            AND(AND(a[0], a[1]), AND(a[2], a[3])),
-            AND(AND(a[4], a[5]), AND(a[6], a[7]))
-            );
-}
-
 bool HalfAdder(bool a, bool b, bool *carryOut)
 {
     *carryOut = AND(a, b);
@@ -47,10 +39,10 @@ void bit8AdderOrSubtractor(bool a[], bool b[], bool output[], bool sub, bool *ca
     *carryOut = XOR(*carryOut, sub);
 }
 
-void bit8FlipLatchFunc(bit8FlipLatch *fl, bool dataIn[], bool output[], bool write)
+void bit8FlipLatchFunc(bit8FlipLatch *fl, bool dataIn[], bool output[], bool w, bool clr)
 {
     for (int i = 0; i < 8; ++i)
-        output[i] = DFlipLatchFunc(&fl->bits[i], dataIn[i], write);
+        output[i] = DFlipLatchFunc(&fl->bits[i], dataIn[i], w, clr);
 }
 
 bool selector2_1(bool a, bool b, bool select)
@@ -59,8 +51,38 @@ bool selector2_1(bool a, bool b, bool select)
     return OR(AND(b, select), AND(a, !select));
 }
 
-void bit8Selector(bool a[], bool b[], bool output[], bool select)
+void bit8Selector2_1(bool a[], bool b[], bool output[], bool select)
 {
     for (int i = 0; i < 8; ++i)
         output[i] = selector2_1(a[i], b[i], select);
+}
+
+bool selector8_1(bool d[], bool s[])
+{
+    /* If s == { 1, 0, 0 }, then select d[0],
+       else if s == { 0, 0, 1 }, then select d[4],
+       etc. */
+    bool tmp[8] = {
+        bit4AND(d[0], NOT(s[0]), NOT(s[1]), NOT(s[2])),
+        bit4AND(d[1], s[0], NOT(s[1]), NOT(s[2])),
+        bit4AND(d[2], NOT(s[0]), s[1], NOT(s[2])),
+        bit4AND(d[3], s[0], s[1], NOT(s[2])),
+        bit4AND(d[4], NOT(s[0]), NOT(s[1]), s[2]),
+        bit4AND(d[5], s[0], NOT(s[1]), s[2]),
+        bit4AND(d[6], NOT(s[0]), s[1], s[2]),
+        bit4AND(d[7], s[0], s[1], s[2])
+    };
+    return bit8OR(tmp);
+}
+
+void dataDecoder3_8(bool w, bool s[], bool output[])
+{
+    output[0] = bit4AND(w, NOT(s[0]), NOT(s[1]), NOT(s[2]));
+    output[1] = bit4AND(w, s[0], NOT(s[1]), NOT(s[2]));
+    output[2] = bit4AND(w, NOT(s[0]), s[1], NOT(s[2]));
+    output[3] = bit4AND(w, s[0], s[1], NOT(s[2]));
+    output[4] = bit4AND(w, NOT(s[0]), NOT(s[1]), s[2]);
+    output[5] = bit4AND(w, s[0], NOT(s[1]), s[2]);
+    output[6] = bit4AND(w, NOT(s[0]), s[1], s[2]);
+    output[7] = bit4AND(w, s[0], s[1], s[2]);
 }
