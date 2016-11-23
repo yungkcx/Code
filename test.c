@@ -179,6 +179,29 @@ static void test_ram8_1()
     TEST_BOOL_EQ(1, df[6]);
 }
 
+static void test_ram64k_8()
+{
+    bool d[8] = { 1, 0, 0, 1, 1, 1, 0, 1 };
+    bool a[8] = { 0, 0, 1, 1, 0, 0, 1, 1 };
+    bool addr[16] = {  /* For address 0x0001h. */
+        1, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0
+    };
+    bool output[8];
+    bool *df = alloca(64*1024*8);
+    kb64RAM8(df, addr, d, output, 1);
+    for (int i = 0; i < 8; ++i)
+        TEST_BOOL_EQ(d[i], output[i]);
+    bool addr2[16] = {  /* For address 0x0100h. */
+        0, 0, 0, 0, 0, 0, 0, 0,
+        1, 0, 0, 0, 0, 0, 0, 0
+    };
+    kb64RAM8(df, addr2, a, output, 1);
+    kb64RAM8(df, addr2, d, output, 0); /* Close `w' for read. */
+    for (int i = 0; i < 8; ++i)
+        TEST_BOOL_EQ(a[i], output[i]);
+}
+
 static void test()
 {
     test_logic_gate();
@@ -187,6 +210,7 @@ static void test()
     test_selector();
     test_data_decoder();
     test_ram8_1();
+    test_ram64k_8();
 }
 
 int main()

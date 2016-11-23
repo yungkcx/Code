@@ -1,6 +1,7 @@
 #ifndef CODE_H__
 # define CODE_H__
 
+#include "alloca.h"
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdarg.h>
@@ -25,6 +26,7 @@ typedef bool DFlipLatch;
 typedef struct {
     DFlipLatch bits[8];
 } bit8FlipLatch;
+typedef unsigned short bit16Counter;
 
 bool DFlipLatchFunc(DFlipLatch *df, bool d, bool w, bool clr);
 void bit8FlipLatchFunc(bit8FlipLatch *df, bool dataIn[], bool output[], bool w, bool clr);
@@ -35,5 +37,15 @@ bool bit8RAM(DFlipLatch df[], bool addr[], bool d, bool w);
 void bit8RAM8(DFlipLatch df[], bool addr[], bool d[], bool output[], bool w);
 void bit8Decoder1_2(bool d[], bool output0[], bool output1[], bool select);
 void decoder1_2(bool d, bool *out0, bool *out1, bool select);
+void kb64RAM8(DFlipLatch df[], bool addr[], bool d[], bool output[], bool w);
+void bulb(bool a[]);
+void computer();
+
+#define DUMP_BOOL_ARRAY(a, n) \
+    do {\
+        for (int i = 0; i < n; ++i)\
+            printf("%1d", a[i]);\
+        putchar('\n');\
+    } while (0)
 
 #endif /* CODE_H__ */

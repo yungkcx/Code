@@ -178,7 +178,78 @@ void bit8Decoder1_2(bool d[], bool output0[], bool output1[], bool select)
         decoder1_2(d[i], &output0[i], &output1[i], select);
 }
 
-/* 256*8 RAM, sizeof(addr) is 8, sizeof(df) is 256*8, sizeof(d) is 8. */
-void byte256RAM8(DFlipLatch df[], bool addr[], bool d[], bool output[], bool w, bool select)
+/* 64k*8 RAM, sizeof(addr) is 16, sizeof(df) is 64k*8, sizeof(d) is 8. */
+void kb64RAM8(DFlipLatch df[], bool addr[], bool d[], bool output[], bool w)
 {
+    unsigned short offset = 0;
+    for (int i = 15; i >= 0; --i) {
+        offset <<= 1;
+        offset |= addr[i];
+    }
+    for (int i = 0; i < 8; ++i)
+        output[i] = DFlipLatchFunc(&df[offset*8 + i], d[i], w, 0);
+}
+
+void bulb(bool a[])
+{
+    for (int i = 0; i < 8; ++i)
+        printf("%s", a[i] ? "○ " : "● ");
+    putchar('\n');
+}
+
+void bit16CounterFunc(bit16Counter *cnt, bool pre, bool clr, bool output[])
+{
+    unsigned short tmp;
+    if (pre)
+        tmp = *cnt = 0xffff;
+    else if (clr)
+        tmp = *cnt = 0;
+    else
+        tmp = (*cnt)++;
+    for (int i = 0; i < 16; ++i) {
+        output[i] = tmp & 0x01;
+        tmp >>= 1;
+    }
+}
+
+void computer()
+{
+    bool clk, clr = 0;
+    DFlipLatch *ram = alloca(64*1024*8);
+    bit8FlipLatch fl;
+    bool addr[16];
+    bool ram_out[8], df_out[8], adder_out[8];
+    bool data[8];
+    bool ram_write = 0;
+    bool ground = 0;
+    bit16Counter cnt;
+    bool carryOut;
+    bool pre = 0;
+
+    setbuf(stdin, NULL);
+    clk = 1;
+    while (1) {
+        puts("/* clr */");
+        scanf("%1d", (int*) &clr);
+        bit16CounterFunc(&cnt, pre, clr, addr);
+        puts("/* RAM write: */");
+        scanf("%1d", (int*) &ram_write);
+        if (ram_write) {
+            int tmp;
+            puts("/* RAM Control Panel */");
+            for (int i = 0; i < 16; ++i) {
+                scanf("%1d", &tmp);
+                addr[16-i-1] = tmp;
+            }
+            for (int i = 0; i < 8; ++i) {
+                scanf("%1d", &tmp);
+                data[i] = tmp;
+            }
+        }
+        kb64RAM8(ram, addr, data, ram_out, ram_write);
+        bit8Adder(ram_out, df_out, adder_out, ground, &carryOut);
+        bit8FlipLatchFunc(&fl, adder_out, df_out, clk, clr);
+        bulb(df_out);
+        //DUMP_BOOL_ARRAY(df_out, 8);
+    }
 }
