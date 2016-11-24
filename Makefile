@@ -3,11 +3,11 @@ CFLAGS=-Wall
 PROGRAM=computer
 TEST=test
 
-all:
-	${CC} main.c computer.c -o ${PROGRAM} ${CFLAGS}
+all: main.c computer.c
+	${CC} $^ -o ${PROGRAM} ${CFLAGS}
 
-test:
-	${CC} test.c computer.c -o ${TEST} ${CFLAGS}
+test: test.c computer.c
+	${CC} $^ -o ${TEST} ${CFLAGS}
 
 .PHONY: clean
 clean:
