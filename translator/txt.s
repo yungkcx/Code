@@ -1,2 +1,5 @@
-LOAD
-
+LOAD    0004h
+ADD     0005h
+HALT
+0004h   01h
+0005h   03h

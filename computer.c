@@ -227,13 +227,13 @@ void computer(int fd)
 {
     bool clk = 1, clr = 1;
     DFlipLatch *ram = alloca(64*1024*8);
-    DFlipLatch *code_ram = alloca(64*1024*8);
     DFlipLatch carryOut;
-    bit8FlipLatch fl;
+    bit8FlipLatch fl, code_df, addr_df1, addr_df2;
     bool addr[16];
-    bool code_out[8], ram_out[8], df_out[8], adder_out[8], output[8];
+    bool code_out[8], ram_out[8], df_out[8], adder_out[8];
+    bool addr_df_out[16], output[16];;
     bool data[8];
-    bool ram_write = 1, code_ram_write = 1;
+    bool ram_write = 1;
     bit16Counter cnt;
     bool pre = 0;
     bool sel;
@@ -241,6 +241,7 @@ void computer(int fd)
     int ins; /* Instruction. */
     int tmp; /* For input a bool variable. */
     int savefd;
+    bool auto_run = 0;
 
     savefd = dup(STDIN_FILENO);
     close(STDIN_FILENO);
@@ -248,46 +249,33 @@ void computer(int fd)
 
     setbuf(stdin, NULL);
     clk = 1;  /* The clk signal is always 1. */
+    int c = 0;
     while (1) {
-        if (clr) {
+        if (++c == 10) {
+            break;
+        }
+        if (!auto_run) {
             puts("** clr **");
             scanf("%1d", &tmp);
             clr = tmp;
         }
-        bit16CounterFunc(&cnt, pre, addr, clr, addr);
+        bit16CounterFunc(&cnt, pre, output, clr, output);
+        printf("cnt: %d\n", cnt -1);
+        sel = ((cnt - 1) % 3 == 0 ? 1 : 0);
+        if (sel && cnt - 1 > 0)
+            --cnt;
+        bit8Selector2_1(output, addr_df_out, addr, sel);
+        bit8Selector2_1(output + 8, addr_df_out + 8, addr + 8, sel);
 
-        if (code_ram_write) {
-            puts("** Code RAM write: **");
-            scanf("%1d", &tmp);
-            code_ram_write = tmp;
-        }
-        if (code_ram_write) {
-            puts("** Code RAM Control Panel **");
-            for (int i = 0; i < 16; ++i) {
-                scanf("%1d", &tmp);
-                addr[16-i-1] = tmp;
-            }
-            for (int i = 0; i < 8; ++i) {
-                scanf("%1d", &tmp);
-                data[i] = tmp;
-            }
-            kb64RAM8(code_ram, addr, data, code_out, code_ram_write);
-        } else {
-            kb64RAM8(code_ram, addr, data, code_out, code_ram_write);
-        }
-        if (!code_ram_write) {
-            ins = bool8toint(code_out);
-            if (ins == HALT)
-                break;
-        }
-
-        if (ram_write) {
-            puts("** Data RAM write: **");
+        printf("ADDR: ");
+        DUMP_BOOL_ARRAY(addr, 16);
+        if (!auto_run) {
+            puts("** RAM write: **");
             scanf("%1d", &tmp);
             ram_write = tmp;
         }
         if (ram_write) {
-            puts("** Data RAM Control Panel **");
+            puts("** RAM Control Panel **");
             for (int i = 0; i < 16; ++i) {
                 scanf("%1d", &tmp);
                 addr[16-i-1] = tmp;
@@ -298,11 +286,25 @@ void computer(int fd)
             }
             kb64RAM8(ram, addr, data, ram_out, ram_write);
         } else {
+            if (clr == 0)
+                auto_run = 1;
             ram_write = (ins == STORE ? 1 : 0);
             kb64RAM8(ram, addr, df_out, ram_out, ram_write);
-            printf("DATA RAM OUT: ");
-            DUMP_BOOL_ARRAY(ram_out, 8);
         }
+        printf("RAM OUT: ");
+        DUMP_BOOL_ARRAY(ram_out, 8);
+        printf("w: %1d\n", ((cnt - 1) % 3));
+        bit8FlipLatchFunc(&code_df, ram_out, code_out,
+                ((cnt - 1) % 3 == 0), clr);
+        if ((cnt - 1) % 3 == 0 && auto_run) {
+            ins = bool8toint(code_out);
+            if (ins == HALT)
+                break;
+        }
+        bit8FlipLatchFunc(&addr_df1, ram_out, addr_df_out,
+                ((cnt - 1) % 3 == 1), clr);
+        bit8FlipLatchFunc(&addr_df2, ram_out, addr_df_out + 8,
+                ((cnt - 1) % 3 == 2), clr);
 
         sub = (ins == SUB || ins == SWB ? 1 : 0);
         DFlipLatchFunc(&carryOut, 1, (carryOut == 1 && (ins == SWB || ins == AWC)), 0);
