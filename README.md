@@ -5,6 +5,7 @@ At last, I have used these elements to make a "calculator".
 
 ## Instructions
 
+```
 All numbers are 8bits.  
 LOAD   Load a number from RAM.  
 STORE  Store a number to RAM.  
@@ -13,6 +14,7 @@ SUB
 AWC    Add with carry.  
 SWB    Subtract with borrow.  
 HALT
+```
 
 ## Usage
 
