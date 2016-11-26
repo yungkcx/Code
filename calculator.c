@@ -192,6 +192,7 @@ void kb64RAM8(DFlipLatch df[], bool addr[], bool d[], bool output[], bool w)
 
 void bulb(bool a[])
 {
+    putchar('\t');
     for (int i = 0; i < 8; ++i)
         printf("%s", a[i] ? "○ " : "● ");
     putchar('\n');
@@ -223,11 +224,11 @@ int bool8toint(bool a[])
     return tmp;
 }
 
-void computer(int fd)
+void calculator(int fd)
 {
-    bool clk = 1, clr = 1;
+    bool clr = 1;
     DFlipLatch *ram = alloca(64*1024*8);
-    DFlipLatch carryOut;
+    DFlipLatch carryOut = 0;
     bit8FlipLatch fl, code_df, addr_df1, addr_df2;
     bool addr[16];
     bool code_out[8], ram_out[8], df_out[8], adder_out[8];
@@ -235,10 +236,8 @@ void computer(int fd)
     bool data[8];
     bool ram_write = 1;
     bit16Counter cnt;
-    bool pre = 0;
-    bool sel;
-    bool sub;
-    int ins; /* Instruction. */
+    bool sel, sub, addr_sel = 0;
+    int ins = 0; /* Instruction. */
     int tmp; /* For input a bool variable. */
     int savefd;
     bool auto_run = 0;
@@ -248,24 +247,16 @@ void computer(int fd)
     dup2(fd, STDIN_FILENO);
 
     setbuf(stdin, NULL);
-    clk = 1;  /* The clk signal is always 1. */
-    int c = 0;
     while (1) {
-        if (++c == 10) {
-            break;
-        }
         if (!auto_run) {
             puts("** clr **");
             scanf("%1d", &tmp);
             clr = tmp;
         }
-        bit16CounterFunc(&cnt, pre, output, clr, output);
-        printf("cnt: %d\n", cnt -1);
-        sel = ((cnt - 1) % 3 == 0 ? 1 : 0);
-        if (sel && cnt - 1 > 0)
-            --cnt;
-        bit8Selector2_1(output, addr_df_out, addr, sel);
-        bit8Selector2_1(output + 8, addr_df_out + 8, addr + 8, sel);
+        bit16CounterFunc(&cnt, 0, addr_df_out, clr, output);
+        addr_sel = (cnt % 4 == 0 ? 1 : 0) && cnt - 1 > 0;
+        bit8Selector2_1(output, addr_df_out, addr, addr_sel);
+        bit8Selector2_1(output + 8, addr_df_out + 8, addr + 8, addr_sel);
 
         printf("ADDR: ");
         DUMP_BOOL_ARRAY(addr, 16);
@@ -273,7 +264,8 @@ void computer(int fd)
             puts("** RAM write: **");
             scanf("%1d", &tmp);
             ram_write = tmp;
-        }
+        } else
+            ram_write = 0;
         if (ram_write) {
             puts("** RAM Control Panel **");
             for (int i = 0; i < 16; ++i) {
@@ -291,47 +283,54 @@ void computer(int fd)
             ram_write = (ins == STORE ? 1 : 0);
             kb64RAM8(ram, addr, df_out, ram_out, ram_write);
         }
-        printf("RAM OUT: ");
+        printf("\tRAM OUT: ");
         DUMP_BOOL_ARRAY(ram_out, 8);
-        printf("w: %1d\n", ((cnt - 1) % 3));
         bit8FlipLatchFunc(&code_df, ram_out, code_out,
-                ((cnt - 1) % 3 == 0), clr);
-        if ((cnt - 1) % 3 == 0 && auto_run) {
-            ins = bool8toint(code_out);
-            if (ins == HALT)
-                break;
-        }
+                (cnt % 4 == 1), clr);
         bit8FlipLatchFunc(&addr_df1, ram_out, addr_df_out,
-                ((cnt - 1) % 3 == 1), clr);
+                (cnt % 4 == 2), clr);
         bit8FlipLatchFunc(&addr_df2, ram_out, addr_df_out + 8,
-                ((cnt - 1) % 3 == 2), clr);
+                (cnt % 4 == 3), clr);
 
+        /* ALU */
         sub = (ins == SUB || ins == SWB ? 1 : 0);
-        DFlipLatchFunc(&carryOut, 1, (carryOut == 1 && (ins == SWB || ins == AWC)), 0);
-        printf("now ins: %2x, carryOut: %1d\n", ins, carryOut);
+        DFlipLatchFunc(&carryOut, 1,
+                (carryOut == 1 && (ins == SWB || ins == AWC)), 0);
+        DFlipLatchFunc(&carryOut, 0, ins == SUB || ins == ADD, 0);
+        printf("\tnow ins: %2x, carryOut: %1d\n", ins, carryOut);
         if (sub) {
             onesComplement(1, ram_out);
-            printf("XOR(1, cO): %1d %1d\n", XOR(1, carryOut), carryOut);
             bool carryOutTmp;
             bit8Adder(df_out, ram_out, adder_out,
                     XOR(1, carryOut), &carryOutTmp);
             DFlipLatchFunc(&carryOut, XOR(carryOutTmp, 1), 1, 0);
-            printf("carryOut: %1d\n", carryOut);
+            printf("\tcarryOut: %1d\n", carryOut);
         } else {
             bool carryOutTmp;
             bit8Adder(ram_out, df_out, adder_out, carryOut, &carryOutTmp);
             DFlipLatchFunc(&carryOut, carryOutTmp,
-                    (ins == ADD || ins == AWC), 0);
+                    cnt % 4 == 0 && (ins == ADD || ins == AWC), 0);
         }
-        sel = (ins == LOAD ? 0 : 1);
+        sel = (ins == LOAD || ins == STORE ? 0 : 1);
         bit8Selector2_1(ram_out, adder_out, output, sel);
-        printf("SELECTOR OUT: ");
+        printf("\tSELECTOR OUT: ");
         DUMP_BOOL_ARRAY(output, 8);
+        /* ALU END */
 
-        bit8FlipLatchFunc(&fl, output, df_out, clk, clr);
-        printf("DF OUT: ");
+        bit8FlipLatchFunc(&fl, output, df_out, addr_sel, clr);
+        printf("\tDF OUT: ");
         DUMP_BOOL_ARRAY(df_out, 8);
         bulb(df_out);
+        if (auto_run) {
+            int tmp = bool8toint(code_out);
+            if (cnt % 4 == 3)
+                ins = tmp;
+            else if (cnt % 4 == 1 && tmp == HALT) {
+                if (tmp == HALT)
+                    break;
+            } else
+                ins = 0;
+        }
     }
  
     close(STDIN_FILENO);

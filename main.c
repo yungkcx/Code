@@ -12,7 +12,7 @@ int main(int argc, char **argv)
     } else {
         fd = open(argv[1], O_RDONLY);
     }
-    computer(fd);
+    calculator(fd);
     close(fd);
 
     return 0;

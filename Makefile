@@ -1,12 +1,12 @@
 CC=gcc
 CFLAGS=-Wall
-PROGRAM=computer
+PROGRAM=calculator
 TEST=test
 
-all: main.c computer.c
+all: main.c calculator.c
 	${CC} $^ -o ${PROGRAM} ${CFLAGS}
 
-test: test.c computer.c
+test: test.c calculator.c
 	${CC} $^ -o ${TEST} ${CFLAGS}
 
 .PHONY: clean

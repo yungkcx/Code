@@ -1,6 +1,6 @@
 CC=gcc
 PROGRAM=translator
-CFLAGS=-Wall -Wno-unused -lm
+CFLAGS=-Wall -lm
 
 all: translator.c
 	gcc $^ -o ${PROGRAM} ${CFLAGS}

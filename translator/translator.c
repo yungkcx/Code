@@ -1,8 +1,13 @@
 #include "../code.h"
 
-#define SAVE    0xCC
-#define MAXLINE 128
+#define SAVE        0xC0
+#define COMMENT     0xC1
+#define BLANK_LINE  0xC2
+
+#define MAXLINE 1024
 #define STRNCASECMP(a, R, b, n) (strncasecmp(a, b, n) R 0)
+
+static int error_line = 0;
 
 typedef struct {
     char *line;
@@ -31,7 +36,7 @@ int main(int argc, char **argv)
 
     errno = 0;
     if (translator(argv[optind], fp) != 0) {
-        fprintf(stderr, "Translate error: %s\n",
+        fprintf(stderr, "Translate error: %d: %s\n", error_line,
                 errno ? strerror(errno) : "syntax error");
         goto end;
     }
@@ -80,11 +85,22 @@ static int hex2int(int n, trans_line *line_buf)
     return result;
 }
 
+static void white_space(trans_line *t)
+{
+    while (isblank(*t->line))
+        t->line++;
+}
+
 static int getins(trans_line *t, int *addr)
 {
     int ins;
 
-    if (STRNCASECMP("LOAD", ==, t->line, 4)) {
+    white_space(t);
+    if (*t->line == '#') {
+        return COMMENT;
+    } else if (*t->line == '\n' || *t->line == '\r' || *t->line == '\0') {
+        return BLANK_LINE;
+    } else if (STRNCASECMP("LOAD", ==, t->line, 4)) {
         t->line += 4;
         ins = LOAD;
     } else if (STRNCASECMP("STORE", ==, t->line, 5)) {
@@ -107,7 +123,7 @@ static int getins(trans_line *t, int *addr)
         ins = HALT;
     } else {
         if ((*addr = hex2int(4, t)) < 0)
-            ins = -1;
+            return -1;
         else
             ins = SAVE;
     }
@@ -117,12 +133,6 @@ static int getins(trans_line *t, int *addr)
     else
         t->line++;
     return ins;
-}
-
-static void white_space(trans_line *t)
-{
-    while (isblank(*t->line))
-        t->line++;
 }
 
 static void print_addr(int addr, trans_line *t)
@@ -147,11 +157,40 @@ static void print_data(int data, trans_line *t)
     t->line++;
 }
 
+static void print_data_reverse(int data, int *addr, trans_line *parse_buf)
+{
+    bool data_bool[16];
+
+    inttobool16(data, data_bool);
+    sprintf(parse_buf->line, "1\n1\n");
+    parse_buf->line += 4;
+    print_addr(*addr, parse_buf);
+    for (int i = 15; i >= 8; --i)
+        sprintf(parse_buf->line++, "%1d", data_bool[i]);
+    sprintf(parse_buf->line, "\n");
+    parse_buf->line++;
+    (*addr)++;
+    sprintf(parse_buf->line, "1\n1\n");
+    parse_buf->line += 4;
+    print_addr(*addr, parse_buf);
+    for (int i = 7; i >= 0; --i)
+        sprintf(parse_buf->line++, "%1d", data_bool[i]);
+    sprintf(parse_buf->line, "\n");
+    parse_buf->line++;
+    (*addr)++;
+    sprintf(parse_buf->line, "1\n1\n");
+    parse_buf->line += 4;
+    print_addr(*addr, parse_buf);
+    for (int i = 0; i < 8; ++i)
+        sprintf(parse_buf->line++, "%1d", 0);
+    sprintf(parse_buf->line, "\n");
+    parse_buf->line++;
+    (*addr)++;
+}
+
 static int parse_line(int *addr, trans_line *line_buf, trans_line *parse_buf)
 {
     int  ins;
-    bool ins_bool[8], data_bool[16];
-    bool addr_buf[16];
     int  addr2;
     int  data;
 
@@ -172,34 +211,23 @@ static int parse_line(int *addr, trans_line *line_buf, trans_line *parse_buf)
         break;
     case SAVE:
         print_addr(addr2, parse_buf);
+        break;
+    case COMMENT:
+    case BLANK_LINE:
+        return -1;
+        break;
     default:
-        ;
+        return -2;
     }
     white_space(line_buf);
     if (ins == SAVE) {
         if ((data = hex2int(2, line_buf)) < 0)
-            return -1;
+            return -2;
         print_data(data, parse_buf);
     } else {
         if ((data = hex2int(4, line_buf)) < 0)
-            return -1;
-        inttobool16(data, data_bool);
-        sprintf(parse_buf->line, "1\n1\n");
-        parse_buf->line += 4;
-        print_addr(*addr, parse_buf);
-        for (int i = 15; i >= 8; --i)
-            sprintf(parse_buf->line++, "%1d", data_bool[i]);
-        sprintf(parse_buf->line, "\n");
-        parse_buf->line++;
-        (*addr)++;
-        sprintf(parse_buf->line, "1\n1\n");
-        parse_buf->line += 4;
-        print_addr(*addr, parse_buf);
-        for (int i = 7; i >= 0; --i)
-            sprintf(parse_buf->line++, "%1d", data_bool[i]);
-        sprintf(parse_buf->line, "\n");
-        parse_buf->line++;
-        (*addr)++;
+            return -2;
+        print_data_reverse(data, addr, parse_buf);
     }
 
     return 0;
@@ -212,7 +240,6 @@ static int translator(const char *infile, FILE *outfile)
     char        trans_result[MAXLINE];
     trans_line  line_buf, parse_buf;
     int         addr;
-    bool        insbuf[8];
     int         ret;
 
     if((infp = fopen(infile, "r")) == NULL)
@@ -220,11 +247,14 @@ static int translator(const char *infile, FILE *outfile)
 
     addr = 0;
     while (fgets(buf, MAXLINE, infp) != NULL) {
+        error_line++;
         line_buf.line = buf;
         parse_buf.line = trans_result;
         ret = parse_line(&addr, &line_buf, &parse_buf);
-        if (ret < 0)
+        if (ret == -1)
             continue;
+        else if (ret == -2)
+            goto bad;
         fprintf(outfile, "1\n1\n");
         fputs(trans_result, outfile);
     }

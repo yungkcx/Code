@@ -1,0 +1,14 @@
+# Add 0603h to 04ffh.
+
+LOAD    4001h
+ADD     4002h
+STORE   4008h
+LOAD    4006h
+AWC     4005h
+STORE	4007h
+HALT
+
+4001h   FFh
+4002h   03h
+4005h   04h
+4006h   06h

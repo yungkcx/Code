@@ -59,7 +59,7 @@ void kb64RAM8(DFlipLatch df[], bool addr[], bool d[], bool output[], bool w);
 void bulb(bool a[]);
 void bit16CounterFunc(bit16Counter *cnt, bool pre, bool d[], bool clr, bool output[]);
 int bool8toint(bool a[]);
-void computer(int fd);
+void calculator(int fd);
 
 #define GROUND 0
 #define DUMP_BOOL_ARRAY(a, n) \
