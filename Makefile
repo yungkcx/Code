@@ -11,4 +11,5 @@ test: test.c calculator.c
 
 .PHONY: clean
 clean:
-	rm ${PROGRAM} ${TEST}
+	rm -f ${PROGRAM} ${TEST}
+	cd translator && make clean

@@ -7,4 +7,4 @@ all: translator.c
 
 .PHONY: clean
 clean:
-	rm ${PROGRAM}
+	rm -f ${PROGRAM}
